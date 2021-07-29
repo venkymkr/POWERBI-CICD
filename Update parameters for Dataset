@@ -1,0 +1,51 @@
+$userName = "XXXXXX"
+$password = "YYYYYY"
+
+# convert password to secure string
+$securePassword = ConvertTo-SecureString -String $password -AsPlainText -Force
+
+# create PSCredential object to serve as login credentials
+$credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $userName, $securePassword
+
+# log into Power BI unattended without any user interaction
+
+$user = Connect-PowerBIServiceAccount -Credential $credential -Verbose
+#Resolve-PowerBIError -Last
+
+$workspaceName="QA"
+$datasetName="Salesnew1"
+
+
+# get object for target workspace
+$workspace = Get-PowerBIWorkspace -Name $workspaceName
+
+# get object for new dataset
+$dataset = Get-PowerBIDataset -WorkspaceId $workspace.Id | Where-Object Name -eq $datasetName
+
+# get object for new SQL datasource
+$datasource = Get-PowerBIDatasource -WorkspaceId $workspace.Id -DatasetId $dataset.Id
+
+# parse REST to determine gateway Id and datasource Id
+$workspaceId = $workspace.Id
+$datasetId = $dataset.Id
+
+# Update Parameters URL
+$urlUpdateParams = "/datasets/$datasetId/Default.UpdateParameters"
+     
+    $body = '{
+      "updateDetails": [
+        {
+          "name": "Database",
+          "newValue": "SQL"
+        },
+        {
+          "name": "ServerName",
+          "newValue": "sqlserver.database.windows.net"
+        }
+      ]
+    }'
+    $content = 'application/json' 
+    Invoke-PowerBIRestMethod -Url $urlUpdateParams -Method Post -Body $body -ContentType $content -Verbose
+    #Resolve-PowerBIError
+    # Updates Dataset Parameters
+    Write-Host "Updated Parameters" -ForegroundColor Green
